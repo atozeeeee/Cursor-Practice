@@ -82,11 +82,7 @@
 
     .row { display: contents; }
 
-    .actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 10px;
-    }
+    .actions { display: flex; gap: 10px; margin-top: 10px; }
 
     .btn {
       border: 1px solid var(--border);
@@ -102,12 +98,7 @@
     .btn.primary { background: var(--accent); color: #061013; border-color: #1faa59; }
     .btn.warn { background: var(--warn); color: #1b1303; border-color: #d08706; }
 
-    .results h2 {
-      font-size: 16px;
-      margin: 12px 0 8px 0;
-      color: var(--muted);
-      letter-spacing: 0.04em;
-    }
+    .results h2 { font-size: 16px; margin: 12px 0 8px 0; color: var(--muted); letter-spacing: 0.04em; }
 
     .kv {
       display: grid;
@@ -122,13 +113,13 @@
 
     .footnote { color: var(--muted); font-size: 12px; margin-top: 12px; line-height: 1.5; }
 
-    .footer {
-      max-width: 1200px; margin: 16px auto 40px; color: var(--muted); font-size: 12px; padding: 0 24px;
-    }
+    .footer { max-width: 1200px; margin: 16px auto 40px; color: var(--muted); font-size: 12px; padding: 0 24px; }
 
-    @media (max-width: 1024px) {
-      .container { grid-template-columns: 1fr; }
-    }
+    .subpanel-title { font-size: 16px; margin: 0 0 10px 0; }
+    .subgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+    .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+    @media (max-width: 1024px) { .container { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -253,10 +244,70 @@
       <div class="kv"><div>Pension at start (nominal)</div><div id="outPensionNominal">-</div></div>
       <div class="kv"><div>Portfolio longevity</div><div id="outLongevity">-</div></div>
       <div class="kv"><div>Ending balance at life expectancy (today's $)</div><div id="outEndingReal">-</div></div>
-
       <div class="footnote">
         Assumptions: Monthly contributions and compounding; employer match equals match rate times your contribution up to the cap; spending and other income rise with inflation. This is a deterministic model and ignores taxes and account types.
       </div>
+
+      <div class="divider"></div>
+      <h2>More tools</h2>
+
+      <div class="subpanel">
+        <div class="subpanel-title">How can you save for retirement? (Required savings rate)</div>
+        <div class="subgrid">
+          <div class="kv"><div>Required employee contribution (% of salary)</div><div id="outReqEmployeePct">-</div></div>
+          <div class="kv"><div>Total contribution incl. employer match (% of salary)</div><div id="outReqTotalPct">-</div></div>
+          <div class="kv"><div>Status</div><div id="outReqStatus">-</div></div>
+          <div style="grid-column: 1 / -1; display:flex; gap:10px;">
+            <button class="btn" id="calcSaveRateBtn" type="button">Find required savings rate</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="subpanel">
+        <div class="subpanel-title">How much can you withdraw after retirement?</div>
+        <div class="subgrid">
+          <div>
+            <label><input type="checkbox" id="useProjBal1" checked /> Use projected balance at retirement</label>
+          </div>
+          <div>
+            <label for="startBal1">Or provide starting balance at retirement</label>
+            <input id="startBal1" type="number" step="1000" value="0" disabled />
+          </div>
+          <div class="kv"><div>Max sustainable withdrawal (today's $ / year)</div><div id="outMaxWithdrawToday">-</div></div>
+          <div class="kv"><div>Max sustainable withdrawal (nominal at start)</div><div id="outMaxWithdrawNominal">-</div></div>
+          <div class="kv"><div>4% rule (today's $ / year)</div><div id="outSWRtoday">-</div></div>
+          <div class="kv"><div>4% rule (nominal at start)</div><div id="outSWRnominal">-</div></div>
+          <div style="grid-column: 1 / -1; display:flex; gap:10px;">
+            <button class="btn" id="calcMaxWithdrawBtn" type="button">Calculate max withdrawal</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="subpanel">
+        <div class="subpanel-title">How long can your money last?</div>
+        <div class="subgrid">
+          <div>
+            <label><input type="checkbox" id="useProjBal2" checked /> Use projected balance at retirement</label>
+          </div>
+          <div>
+            <label for="startBal2">Or provide starting balance at retirement</label>
+            <input id="startBal2" type="number" step="1000" value="0" disabled />
+          </div>
+          <div>
+            <label for="plannedWithdrawToday">Planned withdrawal (today's $ / year)</label>
+            <input id="plannedWithdrawToday" type="number" step="1000" value="40000" />
+          </div>
+          <div class="kv"><div>Portfolio longevity</div><div id="outLongevity2">-</div></div>
+          <div style="grid-column: 1 / -1; display:flex; gap:10px;">
+            <button class="btn" id="calcLongevity2Btn" type="button">Calculate longevity</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -283,146 +334,349 @@
       document.getElementById(id).textContent = text;
     }
 
-    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+    function toggleSpendInputs() {
+      const val = document.getElementById('spendType').value;
+      const percentWrap = document.getElementById('spendPercentWrap');
+      const fixedWrap = document.getElementById('spendFixedWrap');
+      if (val === 'percent') {
+        percentWrap.style.display = '';
+        fixedWrap.style.display = 'none';
+      } else {
+        percentWrap.style.display = 'none';
+        fixedWrap.style.display = '';
+      }
+    }
 
-    function compute() {
+    function projectToRetirement(employeePctInput) {
       const currentAge = getNumber('currentAge');
       const retirementAge = getNumber('retirementAge');
-      const lifeExpectancy = getNumber('lifeExpectancy');
       const inflation = getNumber('inflation');
-
       const annualSalary0 = getNumber('annualSalary');
       const salaryGrowth = getNumber('salaryGrowth');
       const currentSavings = getNumber('currentSavings');
-      const employeePct = getNumber('employeePct');
       const matchRate = getNumber('matchRate');
       const matchCap = getNumber('matchCap');
-
       const preReturn = getNumber('preReturn');
-      const postReturn = getNumber('postReturn');
-
-      const spendType = document.getElementById('spendType').value;
-      const spendPercent = getNumber('spendPercent');
-      const spendFixed = getNumber('spendFixed');
-
       const ssAnnualToday = getNumber('ssAnnual');
       const ssStartAge = getNumber('ssStartAge');
       const pensionAnnualToday = getNumber('pensionAnnual');
       const pensionStartAge = getNumber('pensionStartAge');
 
-      if (retirementAge <= currentAge) {
-        alert('Retirement age must be greater than current age.');
-        return;
-      }
-      if (lifeExpectancy <= retirementAge) {
-        alert('Life expectancy must be greater than retirement age.');
-        return;
-      }
-
       const yearsToRetire = retirementAge - currentAge;
       const monthsToRetire = yearsToRetire * 12;
-      const monthsDuringRetirement = (lifeExpectancy - retirementAge) * 12;
 
       const rPre = monthlyRate(preReturn);
-      const rPost = monthlyRate(postReturn);
-      const rInfl = monthlyRate(inflation);
       const rSalary = monthlyRate(salaryGrowth);
 
       let balance = currentSavings;
       let salaryMonthly = annualSalary0 / 12;
+
+      const employeePct = Number(employeePctInput);
 
       for (let m = 0; m < monthsToRetire; m++) {
         const employeeContribution = salaryMonthly * (employeePct / 100);
         const eligiblePct = Math.min(employeePct, matchCap);
         const employerContribution = salaryMonthly * (eligiblePct / 100) * (matchRate / 100);
         const totalContribution = employeeContribution + employerContribution;
-
         balance += totalContribution;
         balance *= (1 + rPre);
-
-        // Increase salary for next month
         salaryMonthly *= (1 + rSalary);
       }
 
       const inflationFactorToRetire = Math.pow(1 + inflation / 100, yearsToRetire);
-      const balanceRealToday = balance / inflationFactorToRetire;
-
-      const finalSalaryAnnual = salaryMonthly * 12; // already at end-of-last month pre-retirement
-
-      const desiredIncomeAnnualToday = (function() {
-        if (spendType === 'percent') {
-          return finalSalaryAnnual * (spendPercent / 100) / inflationFactorToRetire; // convert to today's $
-        } else {
-          return spendFixed;
-        }
-      })();
-
-      const desiredIncomeAtRetireNominal = desiredIncomeAnnualToday * inflationFactorToRetire;
+      const finalSalaryAnnual = salaryMonthly * 12; // end of accumulation
 
       const ssAtStartNominal = ssAnnualToday * Math.pow(1 + inflation / 100, Math.max(0, ssStartAge - currentAge));
       const pensionAtStartNominal = pensionAnnualToday * Math.pow(1 + inflation / 100, Math.max(0, pensionStartAge - currentAge));
-
-      // Drawdown simulation in nominal terms with monthly steps
-      let age = retirementAge;
-      let monthCounter = 0;
-      let depletedAtAge = null;
-
-      // Monthly baseline spending at retirement
-      let spendMonthly = desiredIncomeAtRetireNominal / 12;
-      // Monthly SS and pension starting values (when they start)
       const ssStartMonth = Math.max(0, (ssStartAge - retirementAge) * 12);
       const pensionStartMonth = Math.max(0, (pensionStartAge - retirementAge) * 12);
 
+      return {
+        currentAge, retirementAge, yearsToRetire, monthsToRetire,
+        inflation, inflationFactorToRetire,
+        preReturn, finalSalaryAnnual,
+        balanceAtRetirementNominal: balance,
+        ssAtStartNominal, pensionAtStartNominal,
+        ssStartMonth, pensionStartMonth,
+      };
+    }
+
+    function simulateSpendingTarget(params) {
+      const {
+        startBalanceNominal,
+        spendAnnualNominalAtStart,
+        postReturn,
+        inflation,
+        monthsDuringRetirement,
+        ssAtStartNominal,
+        pensionAtStartNominal,
+        ssStartMonth,
+        pensionStartMonth,
+        retirementAge,
+      } = params;
+
+      let balance = startBalanceNominal;
+      let spendMonthly = spendAnnualNominalAtStart / 12;
       let ssMonthly = ssAtStartNominal / 12;
       let pensionMonthly = pensionAtStartNominal / 12;
 
-      let balAtRetirementNominal = balance;
+      const rPost = monthlyRate(postReturn);
+      const rInfl = monthlyRate(inflation);
 
-      // Simulate retirement months
+      let depletedAtAge = null;
+
       for (let m = 0; m < monthsDuringRetirement; m++) {
         const isSSActive = m >= ssStartMonth;
         const isPensionActive = m >= pensionStartMonth;
-
         const otherIncome = (isSSActive ? ssMonthly : 0) + (isPensionActive ? pensionMonthly : 0);
-        const portfolioWithdrawal = Math.max(0, spendMonthly / 12 * 12 - otherIncome); // keep clear intent
+        const portfolioWithdrawal = Math.max(0, spendMonthly - otherIncome);
 
-        balance -= portfolioWithdrawal / 12 * 12; // annualized to keep symmetry with monthly amounts
+        balance -= portfolioWithdrawal;
         if (balance < 0 && depletedAtAge === null) {
-          const yearsIntoRet = m / 12;
-          depletedAtAge = retirementAge + yearsIntoRet;
+          depletedAtAge = retirementAge + (m / 12);
           balance = 0;
-          // Continue to compute ending metrics but track depletion
         }
 
         balance *= (1 + rPost);
 
-        // Inflate amounts for next month
         spendMonthly *= (1 + rInfl);
         if (isSSActive) ssMonthly *= (1 + rInfl);
         if (isPensionActive) pensionMonthly *= (1 + rInfl);
-
-        monthCounter++;
       }
 
-      const endInflFactor = Math.pow(1 + inflation / 100, lifeExpectancy - currentAge);
-      const endingBalanceRealToday = balance / endInflFactor;
+      return { depletedAtAge, endingBalanceNominal: balance };
+    }
 
-      setText('outYears', `${yearsToRetire.toFixed(1)} years (${monthsToRetire} months)`);
-      setText('outBalNominal', formatCurrency(balAtRetirementNominal));
+    function simulatePortfolioWithdrawal(startBalanceNominal, withdrawAnnualNominalAtStart, postReturn, inflation, monthsDuringRetirement, retirementAge) {
+      let balance = startBalanceNominal;
+      let withdrawalMonthly = withdrawAnnualNominalAtStart / 12;
+      const rPost = monthlyRate(postReturn);
+      const rInfl = monthlyRate(inflation);
+      let depletedAtAge = null;
+
+      for (let m = 0; m < monthsDuringRetirement; m++) {
+        balance -= withdrawalMonthly;
+        if (balance < 0 && depletedAtAge === null) {
+          depletedAtAge = retirementAge + (m / 12);
+          balance = 0;
+        }
+        balance *= (1 + rPost);
+        withdrawalMonthly *= (1 + rInfl);
+      }
+      return { depletedAtAge, endingBalanceNominal: balance };
+    }
+
+    function compute() {
+      const lifeExpectancy = getNumber('lifeExpectancy');
+      const postReturn = getNumber('postReturn');
+
+      const yearsToRetireInput = getNumber('retirementAge') - getNumber('currentAge');
+      if (yearsToRetireInput <= 0) { alert('Retirement age must be greater than current age.'); return; }
+      if (lifeExpectancy <= getNumber('retirementAge')) { alert('Life expectancy must be greater than retirement age.'); return; }
+
+      const p = projectToRetirement(getNumber('employeePct'));
+
+      const monthsDuringRetirement = (lifeExpectancy - p.retirementAge) * 12;
+
+      const spendType = document.getElementById('spendType').value;
+      const spendPercent = getNumber('spendPercent');
+      const spendFixed = getNumber('spendFixed');
+      const desiredIncomeAnnualToday = (spendType === 'percent')
+        ? (p.finalSalaryAnnual * (spendPercent / 100)) / p.inflationFactorToRetire
+        : spendFixed;
+      const desiredIncomeAtRetireNominal = desiredIncomeAnnualToday * p.inflationFactorToRetire;
+
+      const sim = simulateSpendingTarget({
+        startBalanceNominal: p.balanceAtRetirementNominal,
+        spendAnnualNominalAtStart: desiredIncomeAtRetireNominal,
+        postReturn,
+        inflation: p.inflation,
+        monthsDuringRetirement,
+        ssAtStartNominal: p.ssAtStartNominal,
+        pensionAtStartNominal: p.pensionAtStartNominal,
+        ssStartMonth: p.ssStartMonth,
+        pensionStartMonth: p.pensionStartMonth,
+        retirementAge: p.retirementAge,
+      });
+
+      const balanceRealToday = p.balanceAtRetirementNominal / p.inflationFactorToRetire;
+      const endInflFactor = Math.pow(1 + p.inflation / 100, lifeExpectancy - p.currentAge);
+      const endingBalanceRealToday = sim.endingBalanceNominal / endInflFactor;
+
+      setText('outYears', `${p.yearsToRetire.toFixed(1)} years (${p.monthsToRetire} months)`);
+      setText('outBalNominal', formatCurrency(p.balanceAtRetirementNominal));
       setText('outBalReal', formatCurrency(balanceRealToday));
       setText('outSpendNominal', formatCurrency(desiredIncomeAtRetireNominal));
       setText('outSpendReal', formatCurrency(desiredIncomeAnnualToday));
-      setText('outSSNominal', formatCurrency(ssAtStartNominal));
-      setText('outPensionNominal', formatCurrency(pensionAtStartNominal));
+      setText('outSSNominal', formatCurrency(p.ssAtStartNominal));
+      setText('outPensionNominal', formatCurrency(p.pensionAtStartNominal));
 
-      if (depletedAtAge === null) {
+      if (sim.depletedAtAge === null) {
         setText('outLongevity', `Sustains through age ${lifeExpectancy}`);
         document.getElementById('outLongevity').className = 'value-success';
       } else {
-        setText('outLongevity', `Depletes at age ${depletedAtAge.toFixed(1)}`);
+        setText('outLongevity', `Depletes at age ${sim.depletedAtAge.toFixed(1)}`);
         document.getElementById('outLongevity').className = 'value-danger';
       }
       setText('outEndingReal', formatCurrency(endingBalanceRealToday));
+    }
+
+    function calcRequiredSavingsRate() {
+      const lifeExpectancy = getNumber('lifeExpectancy');
+      const postReturn = getNumber('postReturn');
+      const retirementAge = getNumber('retirementAge');
+      const currentAge = getNumber('currentAge');
+      if (retirementAge <= currentAge) { alert('Retirement age must be greater than current age.'); return; }
+      if (lifeExpectancy <= retirementAge) { alert('Life expectancy must be greater than retirement age.'); return; }
+
+      // Desired income (today's $)
+      const spendType = document.getElementById('spendType').value;
+      const spendPercent = getNumber('spendPercent');
+      const spendFixed = getNumber('spendFixed');
+
+      const monthsDuringRetirement = (lifeExpectancy - retirementAge) * 12;
+
+      function succeeds(employeePct) {
+        const p = projectToRetirement(employeePct);
+        const desiredIncomeAnnualToday = (spendType === 'percent')
+          ? (p.finalSalaryAnnual * (spendPercent / 100)) / p.inflationFactorToRetire
+          : spendFixed;
+        const desiredIncomeAtRetireNominal = desiredIncomeAnnualToday * p.inflationFactorToRetire;
+        const sim = simulateSpendingTarget({
+          startBalanceNominal: p.balanceAtRetirementNominal,
+          spendAnnualNominalAtStart: desiredIncomeAtRetireNominal,
+          postReturn,
+          inflation: p.inflation,
+          monthsDuringRetirement,
+          ssAtStartNominal: p.ssAtStartNominal,
+          pensionAtStartNominal: p.pensionAtStartNominal,
+          ssStartMonth: p.ssStartMonth,
+          pensionStartMonth: p.pensionStartMonth,
+          retirementAge: p.retirementAge,
+        });
+        return sim.depletedAtAge === null; // sustains to life expectancy
+      }
+
+      // Check feasibility
+      if (succeeds(0)) {
+        setText('outReqEmployeePct', '0.0%');
+        // employer contribution at 0 is 0
+        setText('outReqTotalPct', '0.0%');
+        setText('outReqStatus', 'Goal achievable without saving more');
+        return;
+      }
+
+      let hi = 50; // percent of salary
+      let feasible = succeeds(hi);
+      let tries = 0;
+      while (!feasible && hi < 75 && tries < 6) { hi = Math.min(75, hi * 1.5); feasible = succeeds(hi); tries++; }
+      if (!feasible) {
+        setText('outReqEmployeePct', '-');
+        setText('outReqTotalPct', '-');
+        setText('outReqStatus', 'Not achievable up to 75% savings');
+        return;
+      }
+
+      let lo = 0;
+      for (let i = 0; i < 32; i++) {
+        const mid = (lo + hi) / 2;
+        if (succeeds(mid)) hi = mid; else lo = mid;
+      }
+      const req = hi;
+
+      const matchRate = getNumber('matchRate');
+      const matchCap = getNumber('matchCap');
+      const employerPct = Math.min(req, matchCap) * (matchRate / 100);
+      const totalPct = req + employerPct;
+
+      setText('outReqEmployeePct', `${req.toFixed(2)}%`);
+      setText('outReqTotalPct', `${totalPct.toFixed(2)}%`);
+      setText('outReqStatus', 'Goal achievable');
+    }
+
+    function calcMaxWithdrawal() {
+      const lifeExpectancy = getNumber('lifeExpectancy');
+      const retirementAge = getNumber('retirementAge');
+      const currentAge = getNumber('currentAge');
+      const postReturn = getNumber('postReturn');
+
+      if (retirementAge <= currentAge) { alert('Retirement age must be greater than current age.'); return; }
+      if (lifeExpectancy <= retirementAge) { alert('Life expectancy must be greater than retirement age.'); return; }
+
+      const monthsDuringRetirement = (lifeExpectancy - retirementAge) * 12;
+
+      const useProj = document.getElementById('useProjBal1').checked;
+      const p = projectToRetirement(getNumber('employeePct'));
+      const startBalance = useProj ? p.balanceAtRetirementNominal : Math.max(0, getNumber('startBal1'));
+      const inflToRetire = p.inflationFactorToRetire;
+
+      function sustains(withdrawAnnualNominalAtStart) {
+        const sim = simulatePortfolioWithdrawal(startBalance, withdrawAnnualNominalAtStart, postReturn, p.inflation, monthsDuringRetirement, retirementAge);
+        return sim.depletedAtAge === null;
+      }
+
+      if (startBalance <= 0) {
+        setText('outMaxWithdrawToday', '-');
+        setText('outMaxWithdrawNominal', '-');
+        setText('outSWRtoday', '-');
+        setText('outSWRnominal', '-');
+        return;
+      }
+
+      // Find upper bound
+      let hi = startBalance * 0.10; // 10% starting guess
+      let feasible = sustains(hi);
+      let tries = 0;
+      while (feasible && tries < 8) { hi *= 1.5; feasible = sustains(hi); tries++; }
+      // Now hi is infeasible (or tries exceeded); set lo feasible
+      let lo = 0;
+      if (!feasible) {
+        lo = hi / 1.5;
+      }
+
+      for (let i = 0; i < 36; i++) {
+        const mid = (lo + hi) / 2;
+        if (sustains(mid)) lo = mid; else hi = mid;
+      }
+      const maxNominalAtStart = lo;
+      const maxToday = maxNominalAtStart / inflToRetire;
+
+      const swrNominal = startBalance * 0.04;
+      const swrToday = swrNominal / inflToRetire;
+
+      setText('outMaxWithdrawToday', formatCurrency(maxToday));
+      setText('outMaxWithdrawNominal', formatCurrency(maxNominalAtStart));
+      setText('outSWRtoday', formatCurrency(swrToday));
+      setText('outSWRnominal', formatCurrency(swrNominal));
+    }
+
+    function calcLongevityGivenWithdrawal() {
+      const lifeExpectancy = getNumber('lifeExpectancy');
+      const retirementAge = getNumber('retirementAge');
+      const currentAge = getNumber('currentAge');
+      const postReturn = getNumber('postReturn');
+
+      if (retirementAge <= currentAge) { alert('Retirement age must be greater than current age.'); return; }
+      if (lifeExpectancy <= retirementAge) { alert('Life expectancy must be greater than retirement age.'); return; }
+
+      const monthsDuringRetirement = (lifeExpectancy - retirementAge) * 12;
+
+      const useProj = document.getElementById('useProjBal2').checked;
+      const p = projectToRetirement(getNumber('employeePct'));
+      const startBalance = useProj ? p.balanceAtRetirementNominal : Math.max(0, getNumber('startBal2'));
+      const withdrawalToday = Math.max(0, getNumber('plannedWithdrawToday'));
+      const withdrawNominalAtStart = withdrawalToday * p.inflationFactorToRetire;
+
+      if (startBalance <= 0) { setText('outLongevity2', '-'); return; }
+
+      const sim = simulatePortfolioWithdrawal(startBalance, withdrawNominalAtStart, postReturn, p.inflation, monthsDuringRetirement, retirementAge);
+      if (sim.depletedAtAge === null) {
+        setText('outLongevity2', `Sustains through age ${lifeExpectancy}`);
+        document.getElementById('outLongevity2').className = 'value-success';
+      } else {
+        setText('outLongevity2', `Depletes at age ${sim.depletedAtAge.toFixed(1)}`);
+        document.getElementById('outLongevity2').className = 'value-danger';
+      }
     }
 
     function resetDefaults() {
@@ -446,37 +700,39 @@
         ssStartAge: 67,
         pensionAnnual: 0,
         pensionStartAge: 65,
+        startBal1: 0,
+        startBal2: 0,
+        plannedWithdrawToday: 40000,
       };
       for (const [k, v] of Object.entries(defaults)) {
         const el = document.getElementById(k);
         if (!el) continue;
-        if (el.tagName === 'SELECT') {
-          el.value = String(v);
-        } else {
-          el.value = String(v);
-        }
+        if (el.tagName === 'SELECT') el.value = String(v); else el.value = String(v);
       }
+      document.getElementById('useProjBal1').checked = true;
+      document.getElementById('useProjBal2').checked = true;
+      document.getElementById('startBal1').disabled = true;
+      document.getElementById('startBal2').disabled = true;
       toggleSpendInputs();
     }
 
-    function toggleSpendInputs() {
-      const val = document.getElementById('spendType').value;
-      const percentWrap = document.getElementById('spendPercentWrap');
-      const fixedWrap = document.getElementById('spendFixedWrap');
-      if (val === 'percent') {
-        percentWrap.style.display = '';
-        fixedWrap.style.display = 'none';
-      } else {
-        percentWrap.style.display = 'none';
-        fixedWrap.style.display = '';
-      }
+    function bindEvents() {
+      document.getElementById('calcBtn').addEventListener('click', compute);
+      document.getElementById('resetBtn').addEventListener('click', () => { resetDefaults(); compute(); });
+      document.getElementById('spendType').addEventListener('change', toggleSpendInputs);
+      document.getElementById('calcSaveRateBtn').addEventListener('click', calcRequiredSavingsRate);
+      document.getElementById('calcMaxWithdrawBtn').addEventListener('click', calcMaxWithdrawal);
+      document.getElementById('calcLongevity2Btn').addEventListener('click', calcLongevityGivenWithdrawal);
+      document.getElementById('useProjBal1').addEventListener('change', () => {
+        document.getElementById('startBal1').disabled = document.getElementById('useProjBal1').checked;
+      });
+      document.getElementById('useProjBal2').addEventListener('change', () => {
+        document.getElementById('startBal2').disabled = document.getElementById('useProjBal2').checked;
+      });
     }
 
-    document.getElementById('calcBtn').addEventListener('click', compute);
-    document.getElementById('resetBtn').addEventListener('click', () => { resetDefaults(); compute(); });
-    document.getElementById('spendType').addEventListener('change', toggleSpendInputs);
-
     resetDefaults();
+    bindEvents();
     compute();
   </script>
 </body>
